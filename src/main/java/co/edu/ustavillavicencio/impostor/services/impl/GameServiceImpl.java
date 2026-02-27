@@ -1,9 +1,6 @@
 package co.edu.ustavillavicencio.impostor.services.impl;
 
-import co.edu.ustavillavicencio.impostor.dtos.response.MeResponse;
-import co.edu.ustavillavicencio.impostor.dtos.response.RoundCloseResponse;
-import co.edu.ustavillavicencio.impostor.dtos.response.StartResponse;
-import co.edu.ustavillavicencio.impostor.dtos.response.VotesResponse;
+import co.edu.ustavillavicencio.impostor.dtos.response.*;
 import co.edu.ustavillavicencio.impostor.entities.AssignmentEntity;
 import co.edu.ustavillavicencio.impostor.entities.PlayerEntity;
 import co.edu.ustavillavicencio.impostor.entities.RoomEntity;
@@ -21,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @Transactional
@@ -33,7 +31,7 @@ public class GameServiceImpl implements GameService {
     private final VoteRepository voteRepo;
 
     @Override
-    public StartResponse start(String roomCode, UUID hostPlayerId) {
+    public GameStartResponse start(String roomCode, UUID hostPlayerId) {
         Random random = new Random();
 
         RoomEntity room = findRoomByCode(roomCode);
@@ -43,7 +41,7 @@ public class GameServiceImpl implements GameService {
         }
 
         List<String> wordList = room.getCategory().getWordList(staticResourceService);
-        List<PlayerEntity> roomPlayers = findRoomPlayers(room.getId())
+        List<PlayerEntity> roomPlayers = findRoomPlayers(roomCode)
                 .stream()
                 .filter(PlayerEntity::isAlive)
                 .toList();
@@ -77,7 +75,7 @@ public class GameServiceImpl implements GameService {
         room.setStatus(RoomStatus.IN_GAME);
         room.setCurrentRound(1);
 
-        return new StartResponse(room.getStatus().getLabel(), room.getCurrentRound());
+        return new GameStartResponse(room.getStatus().getLabel(), room.getCurrentRound());
     }
 
     @Override
@@ -90,7 +88,7 @@ public class GameServiceImpl implements GameService {
     }
 
     @Override
-    public VotesResponse votes(String roomCode, UUID voterId, UUID votedId) {
+    public VoteCreateResponse votes(String roomCode, UUID voterId, UUID votedId) {
         RoomEntity room = findRoomByCode(roomCode);
         if (!room.getStatus().equals(RoomStatus.IN_GAME)) {
             throw new IllegalArgumentException("Invalid room status");
@@ -112,19 +110,81 @@ public class GameServiceImpl implements GameService {
 
         createVote(room, voterId, votedId);
 
-        return new VotesResponse("Voto recibido", room.getCurrentRound());
+        return new VoteCreateResponse("Voto recibido", room.getCurrentRound());
     }
 
     @Override
     public RoundCloseResponse roundClose(String roomCode, UUID hostPlayerId) {
-        Map<UUID, Integer> playerVotes = new HashMap<>();
-        List<VoteEntity> votes = voteRepo.findAll();
+        RoomEntity room = findRoomByCode(roomCode);
+        List<PlayerEntity> roomPlayers = findRoomPlayers(roomCode);
 
-        for (VoteEntity vote : votes) {
-            if (playerVotes.get(vote.getId()));
+        if (!room.getHostPlayerId().equals(hostPlayerId)) {
+            throw new IllegalArgumentException("Invalid host player ID");
         }
 
-        return null;
+        Map<UUID, Integer> playerVotes = new HashMap<>();
+        List<VoteEntity> votes = voteRepo.findAll();
+        final AtomicInteger maxVotes = new AtomicInteger(0);
+
+        for (VoteEntity vote : votes) {
+            Integer voteCount = playerVotes.get(vote.getId());
+            if (voteCount == null) voteCount = 0;
+            if (++voteCount > maxVotes.get()) maxVotes.set(voteCount);
+            playerVotes.put(vote.getVotedId(), voteCount);
+        }
+
+        UUID expelled = null;
+        List<UUID> topVoted = playerVotes.entrySet().stream()
+                .filter(entry -> entry.getValue() == maxVotes.get())
+                .map(Map.Entry::getKey)
+                .toList();
+
+        if (topVoted.size() == 1) {
+            expelled = topVoted.getFirst();
+        }
+
+        expelled = topVoted.get((new Random()).nextInt(topVoted.size()));
+
+        PlayerEntity playerExpelled = expel(expelled);
+        boolean playerExpelledWasImpostor = findRole(roomCode, playerExpelled.getId()).equals(Role.IMPOSTOR);
+
+        if (playerExpelledWasImpostor) {
+            room.setStatus(RoomStatus.FINISHED);
+            return new RoundGameOverResponse(
+                    Role.CIVIL.getLabel(),
+                    room.getSecretWord(),
+                    roomPlayers.stream().map(p ->
+                            new PlayerRevealResponse(p.getId(), p.getNickname(), findRole(roomCode, p.getId()).getLabel())
+                    ).toList()
+            );
+        }
+
+        if (
+            roomPlayers.size() < 3 &&
+            roomPlayers.stream()
+                    .filter(p -> findRole(roomCode, p.getId()).equals(Role.IMPOSTOR))
+                    .anyMatch(PlayerEntity::isAlive)
+        ) {
+            room.setStatus(RoomStatus.FINISHED);
+            return new RoundGameOverResponse(
+                    Role.IMPOSTOR.getLabel(),
+                    room.getSecretWord(),
+                    roomPlayers.stream().map(p ->
+                            new PlayerRevealResponse(p.getId(), p.getNickname(), findRole(roomCode, p.getId()).getLabel())
+                    ).toList()
+            );
+        }
+
+        int currentRound = room.getCurrentRound() + 1;
+        room.setCurrentRound(currentRound);
+
+        return new RoundContinueResponse(
+                new PlayerExpelledResponse(playerExpelled.getId(), playerExpelled.getNickname(), playerExpelledWasImpostor),
+                currentRound + 1,
+                (int) roomPlayers.stream()
+                        .filter(PlayerEntity::isAlive)
+                        .count()
+        );
     }
 
     private RoomEntity findRoomByCode(String code) {
@@ -149,9 +209,10 @@ public class GameServiceImpl implements GameService {
         } catch (NoSuchElementException e) { return null; }
     }
 
-    private List<PlayerEntity> findRoomPlayers(UUID roomId) {
+    private List<PlayerEntity> findRoomPlayers(String roomCode) {
+        RoomEntity room = findRoomByCode(roomCode);
         return playerRepo.findAll().stream()
-                .filter(p -> p.getRoomId().equals(roomId))
+                .filter(p -> p.getRoomId().equals(room.getId()))
                 .toList();
     }
 
@@ -171,5 +232,17 @@ public class GameServiceImpl implements GameService {
 
     private void createVote(RoomEntity room, UUID voterId, UUID votedId) {
         voteRepo.save(new VoteEntity(null, room.getId(), room.getCurrentRound(), voterId, votedId));
+    }
+
+    private Role findRole(String roomCode, UUID playerId) {
+        AssignmentEntity assignment = findAssignment(roomCode, playerId);
+        if (assignment == null) throw new IllegalArgumentException("No assignment for " + roomCode + " " + playerId);
+        return assignment.getRole();
+    }
+
+    private PlayerEntity expel(UUID expelled) {
+        PlayerEntity p = findPlayer(expelled);
+        p.setAlive(false);
+        return p;
     }
 }

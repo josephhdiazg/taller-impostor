@@ -1,11 +1,14 @@
 package co.edu.ustavillavicencio.impostor.enums;
 
 import co.edu.ustavillavicencio.impostor.services.StaticResourceService;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
 
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -14,10 +17,13 @@ import java.util.logging.Level;
 @RequiredArgsConstructor
 public enum Category {
     TECHNOLOGY("Tecnologia", "tecnologia.txt"),
+    /*
     FOOD("Comida", "comida.txt"),
     PLACES("Lugares", "lugares.txt"),
     OBJECTS("Objetos", "objetos.txt"),
-    ANIMALS("Animales", "animales.txt");
+    ANIMALS("Animales", "animales.txt")
+     */
+    ;
 
     @Getter
     private final String label;

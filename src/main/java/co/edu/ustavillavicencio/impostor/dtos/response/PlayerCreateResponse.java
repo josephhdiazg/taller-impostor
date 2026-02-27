@@ -7,7 +7,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class PlayerResponse {
+public class PlayerCreateResponse {
     private UUID id;
     private UUID roomId;
     private String nickname;

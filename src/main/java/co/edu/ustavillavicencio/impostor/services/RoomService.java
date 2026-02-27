@@ -1,12 +1,10 @@
 package co.edu.ustavillavicencio.impostor.services;
 
-import co.edu.ustavillavicencio.impostor.dtos.request.RoomRequest;
+import co.edu.ustavillavicencio.impostor.dtos.request.RoomCreateRequest;
 import co.edu.ustavillavicencio.impostor.dtos.response.RoomCreateResponse;
-import co.edu.ustavillavicencio.impostor.dtos.response.RoomResponse;
-
-import java.util.List;
+import co.edu.ustavillavicencio.impostor.dtos.response.RoomShowResponse;
 
 public interface RoomService {
-    RoomResponse findByCode(String code);
-    RoomCreateResponse create(RoomRequest dto);
+    RoomShowResponse findByCode(String code);
+    RoomCreateResponse create(RoomCreateRequest dto);
 }

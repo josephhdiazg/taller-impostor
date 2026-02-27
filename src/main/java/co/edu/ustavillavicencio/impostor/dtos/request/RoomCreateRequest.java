@@ -1,15 +1,17 @@
 package co.edu.ustavillavicencio.impostor.dtos.request;
 
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
-
-import java.util.UUID;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class RoomRequest {
-    private UUID id;
+public class RoomCreateRequest {
+    @NotEmpty
     private String hostNickname;
+    @NotEmpty
     private String category;
+    @NotNull
     private int impostorCount;
 }

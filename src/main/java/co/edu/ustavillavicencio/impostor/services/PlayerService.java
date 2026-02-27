@@ -1,11 +1,11 @@
 package co.edu.ustavillavicencio.impostor.services;
 
-import co.edu.ustavillavicencio.impostor.dtos.request.PlayerRequest;
-import co.edu.ustavillavicencio.impostor.dtos.response.PlayerResponse;
+import co.edu.ustavillavicencio.impostor.dtos.request.PlayerCreateRequest;
+import co.edu.ustavillavicencio.impostor.dtos.response.PlayerCreateResponse;
 
 import java.util.List;
 
 public interface PlayerService {
-    List<PlayerResponse> findAll(String roomCode);
-    PlayerResponse create(String roomCode, PlayerRequest dto);
+    List<PlayerCreateResponse> findAll(String roomCode);
+    PlayerCreateResponse create(String roomCode, PlayerCreateRequest dto);
 }

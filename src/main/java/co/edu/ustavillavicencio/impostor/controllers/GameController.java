@@ -1,12 +1,13 @@
 package co.edu.ustavillavicencio.impostor.controllers;
 
-import co.edu.ustavillavicencio.impostor.dtos.request.VotesRequest;
+import co.edu.ustavillavicencio.impostor.dtos.request.VoteCreateRequest;
 import co.edu.ustavillavicencio.impostor.dtos.response.MeResponse;
 import co.edu.ustavillavicencio.impostor.dtos.response.RoundCloseResponse;
-import co.edu.ustavillavicencio.impostor.dtos.response.StartResponse;
-import co.edu.ustavillavicencio.impostor.dtos.response.VotesResponse;
+import co.edu.ustavillavicencio.impostor.dtos.response.GameStartResponse;
+import co.edu.ustavillavicencio.impostor.dtos.response.VoteCreateResponse;
 import co.edu.ustavillavicencio.impostor.services.GameService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -18,7 +19,7 @@ public class GameController {
     private final GameService service;
 
     @PostMapping("/{roomCode}/start")
-    public StartResponse start(@PathVariable String roomCode, @RequestParam UUID hostPlayerId) {
+    public GameStartResponse start(@PathVariable String roomCode, @RequestParam UUID hostPlayerId) {
         return service.start(roomCode, hostPlayerId);
     }
 
@@ -28,7 +29,7 @@ public class GameController {
     }
 
     @PostMapping("/{roomCode}/votes")
-    public VotesResponse votes(@PathVariable String roomCode, @RequestParam UUID voterId, @RequestBody VotesRequest request) {
+    public VoteCreateResponse votes(@PathVariable String roomCode, @RequestParam UUID voterId, @Validated @RequestBody VoteCreateRequest request) {
         return service.votes(roomCode, voterId, request.getVotedId());
     }
 

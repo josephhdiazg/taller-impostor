@@ -8,7 +8,7 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class RoundEndResponse extends RoundCloseResponse {
+public class RoundGameOverResponse extends RoundCloseResponse {
     private String winner;
     private String secretWord;
     private List<PlayerRevealResponse> reveal;

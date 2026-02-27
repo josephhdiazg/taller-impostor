@@ -5,7 +5,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class VotesResponse {
-    private String message;
-    private int round;
+public class GameStartResponse {
+    private String status;
+    private int currentRound;
 }
